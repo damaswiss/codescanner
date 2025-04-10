@@ -69,50 +69,81 @@ function onScanSuccess(decodedText) {
   playBeep();
   stopScanner();
 
+  let data;
   try {
-    const data = JSON.parse(decodedText);
+    data = JSON.parse(decodedText);
+  } catch (e) {
+    console.error("Invalid QR Code format", e);
+    document.getElementById('info').innerHTML = "❌ Invalid QR code format!";
+    document.getElementById('result').innerHTML = "";
+    document.getElementById('new-scan').style.display = 'inline-block';
+    return;
+  }
+
+  // Check required fields
+  const requiredFields = ['member_name', 'member_id', 'member_code', 'expiration_date'];
+  const hasAllFields = requiredFields.every(field => data.hasOwnProperty(field));
+
+  if (!hasAllFields) {
+    document.getElementById('info').innerHTML = "❌ QR code missing required fields!";
+    document.getElementById('result').innerHTML = "";
+    document.getElementById('new-scan').style.display = 'inline-block';
+    return;
+  }
+
+  // Check expiration date
+  const today = new Date();
+  const [year, month, day] = data.expiration_date.split('/').map(part => parseInt(part, 10));
+  const expirationDate = new Date(2000 + year, month - 1, day); // "19/03/26" -> 2019-03-26
+
+  if (expirationDate < today) {
     document.getElementById('info').innerHTML = `
       <p><strong>Name:</strong> ${data.member_name}</p>
       <p><strong>ID:</strong> ${data.member_id}</p>
       <p><strong>Expiration Date:</strong> ${data.expiration_date}</p>
     `;
-
-    fetch(scriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        issueKey: data.member_id,
-        scannedCode: data.member_code
-      })
-    })
-    .then(response => response.json())
-    .then(responseData => {
-      if (responseData.found) {
-        document.getElementById('result').innerHTML = '✅ OK';
-        document.getElementById('result').className = 'ok';
-      } else {
-        document.getElementById('result').innerHTML = '❌ NO';
-        document.getElementById('result').className = 'nok';
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      stopScanner();
-      document.getElementById('result').innerText = "Error checking code";
-      document.getElementById('result').className = 'nok';
-    })
-    .finally(() => {
-      document.getElementById('new-scan').style.display = 'inline-block';
-    });
-
-  } catch (e) {
-    console.error("Invalid QR Code format", e);
-    stopScanner();
-    document.getElementById('info').innerHTML = "Invalid QR code format!";
-    document.getElementById('result').innerHTML = "";
+    document.getElementById('result').innerHTML = "❌ Expired QR Code!";
+    document.getElementById('result').className = 'nok';
     document.getElementById('new-scan').style.display = 'inline-block';
+    return;
   }
+
+  // If valid, display info
+  document.getElementById('info').innerHTML = `
+    <p><strong>Name:</strong> ${data.member_name}</p>
+    <p><strong>ID:</strong> ${data.member_id}</p>
+    <p><strong>Expiration Date:</strong> ${data.expiration_date}</p>
+  `;
+
+  // Call backend
+  fetch(scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      issueKey: data.member_id,
+      scannedCode: data.member_code
+    })
+  })
+  .then(response => response.json())
+  .then(responseData => {
+    if (responseData.found) {
+      document.getElementById('result').innerHTML = '✅ OK';
+      document.getElementById('result').className = 'ok';
+    } else {
+      document.getElementById('result').innerHTML = '❌ Code does not match!';
+      document.getElementById('result').className = 'nok';
+    }
+  })
+  .catch(error => {
+    console.error(error);
+    document.getElementById('result').innerText = "Error checking code";
+    document.getElementById('result').className = 'nok';
+  })
+  .finally(() => {
+    document.getElementById('new-scan').style.display = 'inline-block';
+  });
 }
+
 
 document.getElementById('new-scan').addEventListener('click', function() {
   startScanner();
