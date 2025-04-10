@@ -1,5 +1,6 @@
 
 const fetch = require('node-fetch');
+const crypto = require('crypto');
 
 exports.handler = async (event, context) => {
   const { issueKey, scannedCode } = JSON.parse(event.body);
@@ -27,17 +28,23 @@ exports.handler = async (event, context) => {
     }
 
     const data = await response.json();
-    const ticketRawValue = data.fields[CUSTOM_FIELD_ID];
-    
-    if (!ticketRawValue) {
-      return ContentService.createTextOutput(JSON.stringify({ found: "No ticket found" }))
-                            .setMimeType(ContentService.MimeType.JSON);
+    const ticketCode = data.fields[CUSTOM_FIELD_ID];
+
+    if (!ticketCode) {
+      console.log("No ticket code found on issue.");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ found: false })
+      };
     }
 
-    // Hash the raw ticket field value using SHA256
-    const ticketRawValueTrimmed = ticketRawValue.trim();
-    const ticketHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, ticketRawValueTrimmed, Utilities.Charset.UTF_8);
-    const ticketHashHex = ticketHash.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join(''); // Convert to hex string
+    // 👉 Hash the Jira field before comparing
+    const ticketRawValueTrimmed = ticketCode.trim();
+    const ticketHashHex = crypto.createHash('sha256')
+                                .update(ticketRawValueTrimmed, 'utf8')
+                                .digest('hex');
+
+    console.log("Computed ticket hash:", ticketHashHex);
 
     const match = (ticketHashHex === scannedCode);
     return {
