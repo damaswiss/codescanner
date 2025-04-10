@@ -4,11 +4,12 @@ const fetch = require('node-fetch');
 exports.handler = async (event, context) => {
   const { issueKey, scannedCode } = JSON.parse(event.body);
 
-  const JIRA_DOMAIN = "damaswiss.atlassian.net"; // <-- Your Jira domain
-  const JIRA_EMAIL = "info@damaswiss.org";     // <-- Your Jira email
-  const JIRA_API_TOKEN = "ATATT3xFfGF0MBfRzYfSWGmazTWNWybwEHW4Z7rivOdvI8N476m9dLiFEptVkQDu_xzJkeD3HXfh5cYvf0dtk0qDs1QEECdCWPw6mEQueBwbShZR7iEiF7G1gywfX4gCZaOpL76x94AaDRYizH3BBM6ciCKQNsq4vUlcJ97k-MrGXgjkr5pb6Ok=DB022894";          // <-- Your Jira API token
-  const CUSTOM_FIELD_ID = "customfield_10061";      // <-- Your custom field ID in Jira
 
+  const JIRA_DOMAIN = process.env.JIRA_DOMAIN;
+  const JIRA_EMAIL = process.env.JIRA_EMAIL;
+  const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
+  const CUSTOM_FIELD_ID = process.env.CUSTOM_FIELD_ID;
+  
   try {
     const response = await fetch(`https://${JIRA_DOMAIN}/rest/api/3/issue/${issueKey}`, {
       method: "GET",
