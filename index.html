@@ -93,7 +93,7 @@ function onScanSuccess(decodedText) {
 
   // Check expiration date
   const today = new Date();
-  const [year, month, day] = data.expiration_date.split('/').map(part => parseInt(part, 10));
+  const [day, month, year] = data.expiration_date.split('/').map(part => parseInt(part, 10));
   const expirationDate = new Date(2000 + year, month - 1, day); // "19/03/26" -> 2019-03-26
 
   if (expirationDate < today) {
