@@ -27,9 +27,19 @@ exports.handler = async (event, context) => {
     }
 
     const data = await response.json();
-    const ticketCode = data.fields[CUSTOM_FIELD_ID];
-    const match = ticketCode && scannedCode && (ticketCode.trim() === scannedCode.trim());
+    const ticketRawValue = data.fields[CUSTOM_FIELD_ID];
+    
+    if (!ticketRawValue) {
+      return ContentService.createTextOutput(JSON.stringify({ found: "No ticket found" }))
+                            .setMimeType(ContentService.MimeType.JSON);
+    }
 
+    // Hash the raw ticket field value using SHA256
+    const ticketRawValueTrimmed = ticketRawValue.trim();
+    const ticketHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, ticketRawValueTrimmed, Utilities.Charset.UTF_8);
+    const ticketHashHex = ticketHash.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join(''); // Convert to hex string
+
+    const match = (ticketHashHex === scannedCode);
     return {
       statusCode: 200,
       body: JSON.stringify({ found: match })
