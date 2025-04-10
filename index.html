@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,64 +6,16 @@
   <title>QR Member Checker</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      background-color: #f4f6f8;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      color: #333;
-    }
-    #reader {
-      width: 400px;
-      margin: 20px auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      background: white;
-      padding: 10px;
-    }
-    #info {
-      margin-top: 20px;
-      font-size: 1.2em;
-      color: #555;
-    }
-    #result {
-      margin-top: 30px;
-      font-size: 3em;
-      font-weight: bold;
-      min-height: 50px;
-    }
-    .ok {
-      color: #28a745;
-    }
-    .nok {
-      color: #dc3545;
-    }
-    #new-scan {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1.1em;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      display: none;
-    }
-    #new-scan:hover {
-      background-color: #0056b3;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      margin: 20px auto;
-      width: 80%;
-      max-width: 500px;
-      border-radius: 10px;
-      box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
-    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f4f6f8; margin: 0; padding: 20px; }
+    h1 { color: #333; }
+    #reader { width: 400px; margin: 20px auto; border: 2px solid #ccc; border-radius: 10px; background: white; padding: 10px; }
+    #info { margin-top: 20px; font-size: 1.2em; color: #555; }
+    #result { margin-top: 30px; font-size: 3em; font-weight: bold; min-height: 50px; }
+    .ok { color: #28a745; }
+    .nok { color: #dc3545; }
+    #new-scan { margin-top: 20px; padding: 10px 20px; font-size: 1.1em; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; display: none; }
+    #new-scan:hover { background-color: #0056b3; }
+    .card { background: white; padding: 20px; margin: 20px auto; width: 80%; max-width: 500px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
@@ -80,12 +31,11 @@
 
 <button id="new-scan">New Scan</button>
 
-<!-- Beep sound -->
 <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
 <script>
 let html5QrCode;
-const scriptUrl = "https://script.google.com/macros/s/AKfycbwKLUxVs6nTcYNXUE-UoM-f3UqSsuL8cYtwI8BppFLUdO7dupLRoco-AXvk2IxSBapsYg/exec"; // <-- Your Apps Script URL
+const scriptUrl = "/.netlify/functions/check-ticket";
 
 function playBeep() {
   const beepSound = document.getElementById('beep');
@@ -116,20 +66,17 @@ function stopScanner() {
 }
 
 function onScanSuccess(decodedText) {
-  playBeep(); // Play sound on scan
-  stopScanner(); // Always stop after scanning
+  playBeep();
+  stopScanner();
 
   try {
     const data = JSON.parse(decodedText);
-
-    // Update info on screen (without showing member_code)
     document.getElementById('info').innerHTML = `
       <p><strong>Name:</strong> ${data.member_name}</p>
       <p><strong>ID:</strong> ${data.member_id}</p>
       <p><strong>Expiration Date:</strong> ${data.expiration_date}</p>
     `;
 
-    // Send member_id and member_code to server
     fetch(scriptUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,19 +85,8 @@ function onScanSuccess(decodedText) {
         scannedCode: data.member_code
       })
     })
-    .then(response => response.text())
-    .then(text => {
-      console.log("Raw response from script:", text);
-      let responseData;
-      try {
-        responseData = JSON.parse(text);
-      } catch (e) {
-        console.error("Error parsing JSON:", e);
-        document.getElementById('result').innerHTML = "Invalid response from server!";
-        document.getElementById('result').className = 'nok';
-        return;
-      }
-
+    .then(response => response.json())
+    .then(responseData => {
       if (responseData.found) {
         document.getElementById('result').innerHTML = '✅ OK';
         document.getElementById('result').className = 'ok';
@@ -161,18 +97,17 @@ function onScanSuccess(decodedText) {
     })
     .catch(error => {
       console.error(error);
-      stopScanner(); // Stop also on fetch error
+      stopScanner();
       document.getElementById('result').innerText = "Error checking code";
       document.getElementById('result').className = 'nok';
     })
     .finally(() => {
-      // Always show the "New Scan" button
       document.getElementById('new-scan').style.display = 'inline-block';
     });
 
   } catch (e) {
     console.error("Invalid QR Code format", e);
-    stopScanner(); // Stop also on bad QR
+    stopScanner();
     document.getElementById('info').innerHTML = "Invalid QR code format!";
     document.getElementById('result').innerHTML = "";
     document.getElementById('new-scan').style.display = 'inline-block';
@@ -180,10 +115,9 @@ function onScanSuccess(decodedText) {
 }
 
 document.getElementById('new-scan').addEventListener('click', function() {
-  startScanner(); // Start again on new scan
+  startScanner();
 });
 
-// Start scanning when page loads
 startScanner();
 </script>
 
